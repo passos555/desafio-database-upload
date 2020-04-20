@@ -1,14 +1,10 @@
 import { getRepository, getCustomRepository, In } from 'typeorm';
-import path from 'path';
 import fs from 'fs';
 import csvParse from 'csv-parse';
 
-import AppError from '../errors/AppError';
 import Category from '../models/Category';
 import Transaction from '../models/Transaction';
 import TransactionRepository from '../repositories/TransactionsRepository';
-
-import uploadConfig from '../config/upload';
 
 interface NewTransaction {
   title: string;
@@ -34,6 +30,7 @@ class ImportTransactionsService {
     const transactions: NewTransaction[] = [];
     const categories: string[] = [];
 
+    // para cada linha retira os espacos em branco e adiciona nos arrays
     parseCSV.on('data', async line => {
       const [title, type, value, category] = line.map((cell: string) =>
         cell.trim(),
@@ -46,12 +43,15 @@ class ImportTransactionsService {
       transactions.push({ title, type, value, category });
     });
 
+    // parseCSV.on eh sincrono, por isso precisamos utilizar uma promise
     await new Promise(resolve => parseCSV.on('end', resolve));
 
+    // pega todas as categories do banco que estao no array
     const existentCategories = await categoryRepository.find({
       where: { title: In(categories) },
     });
 
+    // pega title das categories que existem no banco
     const existentCategoriesTitles = existentCategories.map(
       (category: Category) => category.title,
     );
